@@ -8,7 +8,7 @@ namespace XiyouApi
         public string? Note { get; set; }
         [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] public int State { get; set; }
 
-        internal ServerResponse() { }
+        public ServerResponse() { }
 
         internal ServerResponse(string errorMsg)
         {

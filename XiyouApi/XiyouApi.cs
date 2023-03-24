@@ -9,7 +9,7 @@ using XiyouApi.Model;
 
 namespace XiyouApi
 {
-    internal static class XiyouApi
+    public static class Xiyou
     {
         internal struct FormItemComparer : IComparer<KeyValuePair<string, string>>
         {
@@ -19,8 +19,8 @@ namespace XiyouApi
             }
         }
 
-        private static HttpClient _httpClient;
-        private static JsonSerializerOptions _serializerOptions = new JsonSerializerOptions()
+        private static readonly HttpClient _httpClient;
+        private static readonly JsonSerializerOptions _serializerOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Converters = { new BoolConverter() }
@@ -32,10 +32,11 @@ namespace XiyouApi
 
         public static string? SessionId { get; private set; } = null;
         public static string? UserId { get; private set; } = null;
+        public static string? ClazzId { get; private set; } = null;
 
         public static bool IsLogged => SessionId != null && UserId != null;
 
-        static XiyouApi()
+        static Xiyou()
         {
             _formInfos = new("_Sts100#@", "web-pc", "1.7976931348623157e+308", 1, "3.0.0", "3.3.4", "5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.0.0");
 
@@ -59,6 +60,22 @@ namespace XiyouApi
             return res;
         }
 
+        public static Task<ServerResponse<OssParamModel>> GetOssParam() =>
+            SendFormRequestAsync<OssParamModel>("/user/getOssParam");
+
+        public static Task<ServerResponse<BagModel>> FindBagList(int pageIndex, int pageSize, int status)
+        {
+            if (!IsLogged)
+                throw new InvalidOperationException("Not logged in yet");
+            return SendFormRequestAsync<BagModel>("/homework/findBagList", new[]
+            {
+                new KeyValuePair<string, string>("pageIndex", pageIndex.ToString()),
+                new KeyValuePair<string, string>("pageSize", pageSize.ToString()),
+                new KeyValuePair<string, string>("clazzId", ClazzId!),
+                new KeyValuePair<string, string>("status", status.ToString())
+            });
+        }
+
         #endregion
 
         public static async Task<ServerResponse<T>> SendV2RequestAsync<T>(string url, object jsonContent)
@@ -79,6 +96,8 @@ namespace XiyouApi
 
             return (await res.Content.ReadFromJsonAsync<ServerResponse<T>>(_serializerOptions))!;
         }
+
+        public static Task<ServerResponse<T>> SendFormRequestAsync<T>(string url) => SendFormRequestAsync<T>(url, Array.Empty<KeyValuePair<string, string>>());
 
         public static async Task<ServerResponse<T>> SendFormRequestAsync<T>(string url, IEnumerable<KeyValuePair<string, string>> form)
         {
@@ -104,9 +123,9 @@ namespace XiyouApi
             foreach (var kvp in array)
             {
                 sb.Append(kvp.Key);
-                sb.Append("=");
+                sb.Append('=');
                 sb.Append(kvp.Value);
-                sb.Append("&");
+                sb.Append('&');
             }
             sb.Remove(sb.Length - 1, 1);  // 移除最后一个&
 
@@ -158,18 +177,14 @@ namespace XiyouApi
 
         private static string CalculateMD5(string input)
         {
-            using (var md5 = MD5.Create())
-            {
-                byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-                byte[] hashBytes = md5.ComputeHash(inputBytes);
+            byte[] hashBytes = MD5.HashData(Encoding.UTF8.GetBytes(input));
 
-                var sb = new StringBuilder(32);
-                for (int i = 0; i < hashBytes.Length; i++)
-                {
-                    sb.Append(hashBytes[i].ToString("X2"));
-                }
-                return sb.ToString();
+            var sb = new StringBuilder(32);
+            for (int i = 0; i < hashBytes.Length; i++)
+            {
+                sb.Append(hashBytes[i].ToString("X2"));
             }
+            return sb.ToString();
         }
         #endregion
     }
