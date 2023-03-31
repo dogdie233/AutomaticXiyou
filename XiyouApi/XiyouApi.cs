@@ -9,6 +9,20 @@ using XiyouApi.Model;
 
 namespace XiyouApi
 {
+    public enum BagStatus
+    {
+        NotStarted = 0,
+        InProgress = 1,
+        Ended = 2
+    }
+
+    public enum HomeworkStatus
+    {
+        Unfinished = 0,
+        Done = 3,
+        OutDatedButCanDo = 7
+    }
+
     public static class Xiyou
     {
         internal struct FormItemComparer : IComparer<KeyValuePair<string, string>>
@@ -34,7 +48,7 @@ namespace XiyouApi
         public static string? UserId { get; private set; } = null;
         public static string? ClazzId { get; private set; } = null;
 
-        public static bool IsLogged => SessionId != null && UserId != null;
+        public static bool IsLogged => SessionId != null && UserId != null && ClazzId != null;
 
         static Xiyou()
         {
@@ -54,25 +68,36 @@ namespace XiyouApi
                 new[] { new KeyValuePair<string, string>("loginAccount", loginAccount), new KeyValuePair<string, string>("password", password)} );
             if (res.Data != null)
             {
-                SessionId = res.Data.UserInfo.SessionId;
-                UserId = res.Data.UserInfo.Id;
+                SessionId = res.Data.UserInfo.SessionId.ToString();
+                UserId = res.Data.UserInfo.Id.ToString();
+                ClazzId = res.Data.UserInfo.ClazzId.ToString();
             }
             return res;
         }
 
         public static Task<ServerResponse<OssParamModel>> GetOssParam() =>
-            SendFormRequestAsync<OssParamModel>("/user/getOssParam");
+            SendFormRequestAsync<OssParamModel>(baseUrl + "/user/getOssParam");
 
-        public static Task<ServerResponse<BagModel>> FindBagList(int pageIndex, int pageSize, int status)
+        public static Task<ServerResponse<BagModel[]>> FindBagList(int pageIndex, int pageSize, BagStatus status)
         {
             if (!IsLogged)
                 throw new InvalidOperationException("Not logged in yet");
-            return SendFormRequestAsync<BagModel>("/homework/findBagList", new[]
+            return SendFormRequestAsync<BagModel[]>(baseUrl + "/homework/findBagList", new[]
             {
                 new KeyValuePair<string, string>("pageIndex", pageIndex.ToString()),
                 new KeyValuePair<string, string>("pageSize", pageSize.ToString()),
                 new KeyValuePair<string, string>("clazzId", ClazzId!),
-                new KeyValuePair<string, string>("status", status.ToString())
+                new KeyValuePair<string, string>("status", ((int)status).ToString())
+            });
+        }
+
+        public static Task<ServerResponse<HomeworkModel[]>> FindHomeworkListByBagId(XiyouID bagId)
+        {
+            if (!IsLogged)
+                throw new InvalidOperationException("Not logged in yet");
+            return SendFormRequestAsync<HomeworkModel[]>(baseUrl + "/homework/findListByBagId", new[]
+            {
+                new KeyValuePair<string, string>("bagId", bagId.ToString())
             });
         }
 

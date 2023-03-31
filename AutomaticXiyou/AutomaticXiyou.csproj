@@ -8,6 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="NLog.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.26.0" />
+    <PackageReference Include="NLog" Version="5.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\XiyouApi\XiyouApi.csproj" />
   </ItemGroup>
 

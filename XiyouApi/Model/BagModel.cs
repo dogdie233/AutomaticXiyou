@@ -1,18 +1,22 @@
-﻿namespace XiyouApi.Model
+﻿using System.Text.Json.Serialization;
+
+using XiyouApi.Converter;
+
+namespace XiyouApi.Model
 {
     public class BagModel
     {
         public string Category { get; set; } = null!;
-        public string ClazzId { get; set; } = null!;
-        public string CreateAt { get; set; } = null!;
-        public string DateEnd { get; set; } = null!;
-        public string DateStart { get; set; } = null!;
-        public string Id { get; set; } = null!;
-        public string ItemIds { get; set; } = null!; 
+        public XiyouID ClazzId { get; set; }
+        public DateTime CreateAt { get; set; }
+        public DateTime DateEnd { get; set; }
+        public DateTime DateStart { get; set; }
+        public XiyouID Id { get; set; }
+        [JsonConverter(typeof(XiyouIDListConverter))] public List<XiyouID> ItemIds { get; set; } = new List<XiyouID>();
         public int ItemNum { get; set; }
         public string Name { get; set; } = null!;
-        public string Status { get; set; } = null!;
-        public string TeacherId { get; set; } = null!;
-        public string UpdateAt { get; set; } = null!;
+        [JsonConverter(typeof(EnumIndexButStringConverter<BagStatus>))] public BagStatus Status { get; set; }
+        public XiyouID TeacherId { get; set; }
+        public DateTime UpdateAt { get; set; }
     }
 }
