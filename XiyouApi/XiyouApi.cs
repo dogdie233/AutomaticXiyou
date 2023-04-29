@@ -37,7 +37,8 @@ namespace XiyouApi
         private static readonly JsonSerializerOptions _serializerOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            Converters = { new BoolConverter() }
+            Converters = { new BoolConverter() },
+            NumberHandling = JsonNumberHandling.AllowReadingFromString
         };
         public static readonly string baseUrl = "https://app.xiyouyingyu.com";
 
@@ -64,8 +65,8 @@ namespace XiyouApi
 
         public static async Task<ServerResponse<AccountModel>> Login(string loginAccount, string password)
         {
-            var res = await SendFormRequestAsync<AccountModel>(baseUrl + "/user/login/account",
-                new[] { new KeyValuePair<string, string>("loginAccount", loginAccount), new KeyValuePair<string, string>("password", password)} );
+            var res = await SendFormRequestAsync<ServerResponse<AccountModel>>(baseUrl + "/user/login/account",
+                new[] { new KeyValuePair<string, string>("loginAccount", loginAccount), new KeyValuePair<string, string>("password", password) });
             if (res.Data != null)
             {
                 SessionId = res.Data.UserInfo.SessionId.ToString();
@@ -76,13 +77,13 @@ namespace XiyouApi
         }
 
         public static Task<ServerResponse<OssParamModel>> GetOssParam() =>
-            SendFormRequestAsync<OssParamModel>(baseUrl + "/user/getOssParam");
+            SendFormRequestAsync<ServerResponse<OssParamModel>>(baseUrl + "/user/getOssParam");
 
         public static Task<ServerResponse<BagModel[]>> FindBagList(int pageIndex, int pageSize, BagStatus status)
         {
             if (!IsLogged)
                 throw new InvalidOperationException("Not logged in yet");
-            return SendFormRequestAsync<BagModel[]>(baseUrl + "/homework/findBagList", new[]
+            return SendFormRequestAsync<ServerResponse<BagModel[]>>(baseUrl + "/homework/findBagList", new[]
             {
                 new KeyValuePair<string, string>("pageIndex", pageIndex.ToString()),
                 new KeyValuePair<string, string>("pageSize", pageSize.ToString()),
@@ -95,15 +96,44 @@ namespace XiyouApi
         {
             if (!IsLogged)
                 throw new InvalidOperationException("Not logged in yet");
-            return SendFormRequestAsync<HomeworkModel[]>(baseUrl + "/homework/findListByBagId", new[]
+            return SendFormRequestAsync<ServerResponse<HomeworkModel[]>>(baseUrl + "/homework/findListByBagId", new[]
             {
                 new KeyValuePair<string, string>("bagId", bagId.ToString())
             });
         }
 
+        public static Task<ServerResponse<RepeatAfterModel>> GetRepeatAfterById(XiyouID groupId)
+        {
+            if (!IsLogged)
+                throw new InvalidOperationException("Not logged in yet");
+            return SendFormRequestAsync<ServerResponse<RepeatAfterModel>>(baseUrl + "/repeatAfter/getRepeatAfterById", new[]
+            {
+                new KeyValuePair<string, string>("repeatAfterId", groupId.ToString())
+            });
+        }
+
+        public static Task<ServerResponse> SaveRepeatAfterAnswer(XiyouID repeatAfterId, string info, double score, int type, int passageType, XiyouID homeworkId)
+        {
+            if (!IsLogged)
+                throw new InvalidOperationException("Not logged in yet");
+            return SendFormRequestAsync<ServerResponse>(baseUrl + "/repeatAfter/saveAnswer", new[]
+            {
+                new KeyValuePair<string, string>("repeatAfterId", repeatAfterId.ToString()),
+                new KeyValuePair<string, string>("info", info),
+                new KeyValuePair<string, string>("score", score.ToString("F2")),
+                new KeyValuePair<string, string>("type", type.ToString()),
+                new KeyValuePair<string, string>("passageType", passageType.ToString()),
+                new KeyValuePair<string, string>("itemId", homeworkId.ToString()),
+                new KeyValuePair<string, string>("clazzId", ClazzId!),
+                new KeyValuePair<string, string>("homeworkType", "1")  // 根据https://student.xiyouyingyu.com/static/js/repeat.dce97e54.js，当homeworkId == null时置0，否则置1
+            });
+        }
+
         #endregion
 
-        public static async Task<ServerResponse<T>> SendV2RequestAsync<T>(string url, object jsonContent)
+        #region Request Sending
+
+        public static async Task<T> SendV2RequestAsync<T>(string url, object jsonContent)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             var jsonString = BuildV2JsonString(jsonContent);
@@ -119,12 +149,12 @@ namespace XiyouApi
             /*if (!res.IsSuccessStatusCode)
                 return new ServerResponse<T>("HttpStatusCode vertify failed " + res.StatusCode.ToString());*/
 
-            return (await res.Content.ReadFromJsonAsync<ServerResponse<T>>(_serializerOptions))!;
+            return (await res.Content.ReadFromJsonAsync<T>(_serializerOptions))!;
         }
 
-        public static Task<ServerResponse<T>> SendFormRequestAsync<T>(string url) => SendFormRequestAsync<T>(url, Array.Empty<KeyValuePair<string, string>>());
+        public static Task<T> SendFormRequestAsync<T>(string url) => SendFormRequestAsync<T>(url, Array.Empty<KeyValuePair<string, string>>());
 
-        public static async Task<ServerResponse<T>> SendFormRequestAsync<T>(string url, IEnumerable<KeyValuePair<string, string>> form)
+        public static async Task<T> SendFormRequestAsync<T>(string url, IEnumerable<KeyValuePair<string, string>> form)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
 
@@ -164,8 +194,10 @@ namespace XiyouApi
             /*if (!res.IsSuccessStatusCode)
                 return new ServerResponse<T>("HttpStatusCode vertify failed " + res.StatusCode.ToString());*/
 
-            return (await res.Content.ReadFromJsonAsync<ServerResponse<T>>(_serializerOptions))!;
+            return (await res.Content.ReadFromJsonAsync<T>(_serializerOptions))!;
         }
+
+        #endregion
 
         #region Utils
 
